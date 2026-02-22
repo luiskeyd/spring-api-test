@@ -1,0 +1,38 @@
+services:
+  server:
+    build:
+      context: .
+    ports:
+      - 8080:8080
+    # O server só vai iniciar DEPOIS que o banco de dados estiver "saudável"
+    depends_on:
+      db:
+        condition: service_healthy
+    # Variáveis que sobrescrevem o application.properties do Spring Boot
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/${DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    # Variáveis para criar o banco inicial
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "5432:5432" # Expõe a porta para você conectar via DBeaver/PgAdmin, se quiser
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # O healthcheck verifica se o banco realmente terminou de ligar e está aceitando conexões
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-data:
